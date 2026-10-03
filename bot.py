@@ -31,7 +31,6 @@ DATA_FILE = "auth_data.json"
 # ==============================
 
 intents = discord.Intents.default()
-
 intents.members = True
 intents.message_content = True
 
@@ -39,7 +38,7 @@ bot = discord.Client(intents=intents)
 
 
 # ==============================
-# 인증 데이터 불러오기
+# 인증 데이터
 # ==============================
 
 def load_data():
@@ -48,12 +47,10 @@ def load_data():
         return {}
 
     try:
-
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
 
     except Exception as e:
-
         print(
             f"⚠️ 데이터 불러오기 실패: "
             f"{type(e).__name__}: {e}"
@@ -65,7 +62,6 @@ def load_data():
 def save_data(data):
 
     with open(DATA_FILE, "w", encoding="utf-8") as f:
-
         json.dump(
             data,
             f,
@@ -81,18 +77,13 @@ auth_data = load_data()
 # 닉네임 형식
 #
 # 롤 닉네임#태그 / 티어 / 주라인
-#
-# 예:
-# 뿌직#휴지 / P2 / 정글
-# 아무개#KR1 / D1 / 미드
-# 고수#KR2 / M800 / 탑
 # ==============================
 
 TIER_PATTERN = (
     r"(?:"
     r"[IBSGPED][1-4]"
-    r"|M[1-9]\d{0,3}"
     r"|GM[1-9]\d{0,3}"
+    r"|M[1-9]\d{0,3}"
     r"|C[1-9]\d{0,3}"
     r")"
 )
@@ -137,97 +128,14 @@ def is_valid_nickname(nickname):
 
 
 # ==============================
-# 인증안내 메시지
-# ==============================
-
-GUIDE_MESSAGE = """🤍 **롤하자 인증 안내**
-
-롤하자에 처음 오셨다면 아래 두 가지를 완료해주세요!
-
-━━━━━━━━━━━━━━━━━━━━
-
-**① 닉네임 변경**
-
-디스코드 닉네임을 아래 형식으로 변경해주세요.
-
-`롤 닉네임#태그 / 티어 / 주라인`
-
-**예시**
-
-`뿌직#휴지 / P2 / 정글`
-`아무개#KR1 / D1 / 미드`
-`고수#KR2 / M800 / 탑`
-
-━━━━━━━━━━━━━━━━━━━━
-
-**🏆 티어 작성 방법**
-
-아이언 → `I1 ~ I4`
-
-브론즈 → `B1 ~ B4`
-
-실버 → `S1 ~ S4`
-
-골드 → `G1 ~ G4`
-
-플래티넘 → `P1 ~ P4`
-
-에메랄드 → `E1 ~ E4`
-
-다이아 → `D1 ~ D4`
-
-마스터 → `M + LP`
-예) `M78` / `M800`
-
-그랜드마스터 → `GM + LP`
-예) `GM425`
-
-챌린저 → `C + LP`
-예) `C1200`
-
-━━━━━━━━━━━━━━━━━━━━
-
-**🎯 주라인**
-
-`탑 / 정글 / 미드 / 원딜 / 서폿`
-
-━━━━━━━━━━━━━━━━━━━━
-
-**② 하트 인증**
-
-닉네임을 변경한 뒤
-
-❤️ **하트 인증 채널에 인증샷을 올려주세요.**
-
-━━━━━━━━━━━━━━━━━━━━
-
-**✅ 인증 완료 조건**
-
-**닉네임 형식 + 하트 인증**
-
-두 가지가 모두 완료되면 봇이 자동으로
-
-🏷️ **「롤하자」 역할을 지급합니다.**
-
-━━━━━━━━━━━━━━━━━━━━
-
-⚠️ 닉네임 형식이 맞지 않으면 역할이 지급되지 않습니다.
-
-예시:
-
-`뿌직#휴지 / P2 / 정글`
-
-이 형식 그대로 작성해주세요! 💙
-"""
-
-
-# ==============================
-# 인증안내 메시지 자동 등록
+# 🤍 인증안내 Embed
 # ==============================
 
 async def send_guide_message():
 
-    channel = bot.get_channel(GUIDE_CHANNEL_ID)
+    channel = bot.get_channel(
+        GUIDE_CHANNEL_ID
+    )
 
     if channel is None:
 
@@ -241,33 +149,64 @@ async def send_guide_message():
     try:
 
         # 최근 메시지 확인
-        async for message in channel.history(limit=20):
+        async for message in channel.history(
+            limit=30
+        ):
 
-            # 봇이 이미 안내문을 올려놓았다면
+            # 봇이 이미 안내 Embed를 올렸으면
             # 다시 올리지 않음
             if (
                 message.author == bot.user
-                and "🤍 **롤하자 인증 안내**" in message.content
+                and message.embeds
+                and message.embeds[0].title
+                == "🤍 롤하자 인증 안내"
             ):
 
-                print("ℹ️ 인증안내 메시지가 이미 있습니다.")
+                print(
+                    "ℹ️ 인증안내 Embed가 이미 있습니다."
+                )
+
                 return
 
-        # 안내문 전송
-        await channel.send(GUIDE_MESSAGE)
+        # Embed 생성
+        embed = discord.Embed(
+            title="🤍 롤하자 인증 안내",
+            description=(
+                "**① 닉네임 변경**\n"
+                "`롤 닉네임#태그 / 티어 / 주라인`\n\n"
 
-        print("✅ 인증안내 메시지 전송 완료")
+                "**예시**\n"
+                "`Faker#KR1 / D1 / 미드`\n"
+                "`Zeus#KR1 / P2 / 탑`\n\n"
+
+                "**② 하트 인증**\n"
+                "❤️ 하트 인증 채널에 인증샷을 올려주세요.\n\n"
+
+                "**닉네임 변경 + 인증샷 업로드 완료 시**\n"
+                "🏷️ `롤하자` 역할이 자동 지급됩니다."
+            ),
+            color=discord.Color.light_grey()
+        )
+
+        await channel.send(
+            embed=embed
+        )
+
+        print(
+            "✅ 인증안내 Embed 전송 완료"
+        )
 
     except discord.Forbidden:
 
         print(
-            "❌ 인증안내 채널에 메시지를 보낼 권한이 없습니다."
+            "❌ 인증안내 채널에 "
+            "메시지를 보낼 권한이 없습니다."
         )
 
     except Exception as e:
 
         print(
-            f"❌ 인증안내 메시지 전송 오류: "
+            f"❌ 인증안내 Embed 전송 오류: "
             f"{type(e).__name__}: {e}"
         )
 
@@ -282,14 +221,19 @@ async def check_and_give_role(member):
 
     print("=" * 50)
 
-    print("🔎 역할 확인 시작")
-    print(f"👤 사용자: {member}")
-    print(f"📝 현재 닉네임: {member.nick}")
+    print(
+        f"🔎 역할 확인 시작"
+    )
 
-    # ------------------------------
+    print(
+        f"👤 사용자: {member}"
+    )
+
+    print(
+        f"📝 현재 닉네임: {member.nick}"
+    )
+
     # 하트 인증 확인
-    # ------------------------------
-
     heart_verified = (
         auth_data
         .get(user_id, {})
@@ -300,17 +244,16 @@ async def check_and_give_role(member):
         f"❤️ 하트 인증: {heart_verified}"
     )
 
-    # ------------------------------
     # 닉네임 확인
-    # ------------------------------
-
     nickname_info = parse_nickname(
         member.nick
     )
 
     if nickname_info:
 
-        print("✅ 닉네임 형식: 정상")
+        print(
+            "✅ 닉네임 형식: 정상"
+        )
 
         print(
             f"🎮 롤 닉네임: "
@@ -334,12 +277,11 @@ async def check_and_give_role(member):
 
     else:
 
-        print("❌ 닉네임 형식: 불일치")
+        print(
+            "❌ 닉네임 형식: 불일치"
+        )
 
-    # ------------------------------
-    # 하트 인증 X
-    # ------------------------------
-
+    # 하트 인증이 없으면 종료
     if not heart_verified:
 
         print(
@@ -351,10 +293,7 @@ async def check_and_give_role(member):
 
         return
 
-    # ------------------------------
-    # 닉네임 X
-    # ------------------------------
-
+    # 닉네임 형식이 틀리면 종료
     if nickname_info is None:
 
         print(
@@ -366,10 +305,7 @@ async def check_and_give_role(member):
 
         return
 
-    # ------------------------------
     # 역할 찾기
-    # ------------------------------
-
     role = member.guild.get_role(
         ROLE_ID
     )
@@ -392,10 +328,7 @@ async def check_and_give_role(member):
         f"🏷️ 찾은 역할: {role.name}"
     )
 
-    # ------------------------------
     # 이미 역할이 있으면 종료
-    # ------------------------------
-
     if role in member.roles:
 
         print(
@@ -406,10 +339,7 @@ async def check_and_give_role(member):
 
         return
 
-    # ------------------------------
     # 역할 지급
-    # ------------------------------
-
     try:
 
         await member.add_roles(
@@ -428,10 +358,7 @@ async def check_and_give_role(member):
     except discord.Forbidden:
 
         print(
-            "❌ 역할 지급 실패"
-        )
-
-        print(
+            "❌ 역할 지급 실패: "
             "봇의 역할이 대상 역할보다 낮거나 "
             "권한이 없습니다."
         )
@@ -468,17 +395,17 @@ async def on_ready():
     )
 
     print(
-        "🤍 인증안내 기능 적용 완료"
+        "🤍 인증안내 Embed 적용 완료"
     )
 
     print("=" * 50)
 
-    # 인증안내 메시지 확인 / 등록
+    # 인증안내 Embed 확인 / 등록
     await send_guide_message()
 
 
 # ==============================
-# 메시지 감지
+# 하트 인증
 # ==============================
 
 @bot.event
@@ -488,60 +415,57 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    # ------------------------------
-    # 하트 인증 채널
-    # ------------------------------
-
-    if message.channel.id == HEART_CHANNEL_ID:
-
-        has_image = False
-
-        for attachment in message.attachments:
-
-            if attachment.content_type:
-
-                if attachment.content_type.startswith(
-                    "image/"
-                ):
-
-                    has_image = True
-                    break
-
-        # 이미지가 없으면 종료
-        if not has_image:
-            return
-
-        user_id = str(
-            message.author.id
-        )
-
-        # 데이터 생성
-        if user_id not in auth_data:
-
-            auth_data[user_id] = {}
-
-        # 하트 인증 완료
-        auth_data[user_id]["heart"] = True
-
-        save_data(auth_data)
-
-        print(
-            f"❤️ 하트 인증 완료: "
-            f"{message.author} "
-            f"({message.author.id})"
-        )
-
-        # 하트 + 닉네임 확인
-        if isinstance(
-            message.author,
-            discord.Member
-        ):
-
-            await check_and_give_role(
-                message.author
-            )
-
+    # 하트 인증 채널이 아니면 무시
+    if message.channel.id != HEART_CHANNEL_ID:
         return
+
+    # 이미지 확인
+    has_image = False
+
+    for attachment in message.attachments:
+
+        if attachment.content_type:
+
+            if attachment.content_type.startswith(
+                "image/"
+            ):
+
+                has_image = True
+                break
+
+    # 이미지가 없으면 종료
+    if not has_image:
+        return
+
+    user_id = str(
+        message.author.id
+    )
+
+    # 데이터 생성
+    if user_id not in auth_data:
+
+        auth_data[user_id] = {}
+
+    # 하트 인증 완료
+    auth_data[user_id]["heart"] = True
+
+    save_data(auth_data)
+
+    print(
+        f"❤️ 하트 인증 완료: "
+        f"{message.author} "
+        f"({message.author.id})"
+    )
+
+    # 하트 + 닉네임 확인
+    if isinstance(
+        message.author,
+        discord.Member
+    ):
+
+        await check_and_give_role(
+            message.author
+        )
 
 
 # ==============================
@@ -579,7 +503,7 @@ async def on_member_update(
         after.nick
     )
 
-    # 형식이 잘못된 경우
+    # 잘못된 형식이면 DM 안내
     if nickname_info is None:
 
         try:
@@ -588,11 +512,10 @@ async def on_member_update(
                 "❌ **닉네임 형식이 올바르지 않습니다.**\n\n"
                 "롤하자 닉네임은 아래 형식으로 변경해주세요.\n\n"
                 "`롤 닉네임#태그 / 티어 / 주라인`\n\n"
-                "예시:\n"
-                "`뿌직#휴지 / P2 / 정글`\n"
-                "`아무개#KR1 / D1 / 미드`\n"
-                "`고수#KR2 / M800 / 탑`\n\n"
-                "🏆 티어는 `I1~I4`, `B1~B4`, "
+                "**예시**\n"
+                "`Faker#KR1 / D1 / 미드`\n"
+                "`Zeus#KR1 / P2 / 탑`\n\n"
+                "티어는 `I1~I4`, `B1~B4`, "
                 "`S1~S4`, `G1~G4`, `P1~P4`, "
                 "`E1~E4`, `D1~D4` 형식입니다.\n"
                 "마스터 이상은 `M800`, `GM425`, "
@@ -600,7 +523,7 @@ async def on_member_update(
             )
 
             print(
-                "📩 잘못된 닉네임 형식 안내 DM 전송"
+                "📩 잘못된 닉네임 형식 DM 전송"
             )
 
         except discord.Forbidden:
@@ -616,8 +539,10 @@ async def on_member_update(
                 f"{type(e).__name__}: {e}"
             )
 
-    # 하트 인증 + 역할 확인
-    await check_and_give_role(after)
+    # 하트 + 닉네임 확인
+    await check_and_give_role(
+        after
+    )
 
 
 # ==============================
