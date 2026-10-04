@@ -1,98 +1,96 @@
+```python
 import discord
 import json
 import os
 import re
+
 from dotenv import load_dotenv
 
 
-# ==============================
+# ==================================================
 # 환경 설정
-# ==============================
+# ==================================================
 
 load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-DATA_FILE = "auth_data.json"
 
-HEART_CHANNEL_ID = 1551099030409314384
-GUIDE_CHANNEL_ID = 1556000267701330071
-ROLE_ID = 1535737518824358179
-
-
-# ==============================
-# Discord 봇 설정
-# ==============================
+# ==================================================
+# 디스코드 설정
+# ==================================================
 
 intents = discord.Intents.default()
+
 intents.members = True
 intents.message_content = True
 
-bot = discord.Client(intents=intents)
+
+bot = discord.Client(
+    intents=intents
+)
 
 
-# ==============================
+# ==================================================
+# 채널 / 역할 ID
+# ==================================================
+
+HEART_CHANNEL_ID = 1551099030409314384
+
+GUIDE_CHANNEL_ID = 1556000267701330071
+
+ROLE_ID = 1535737518824358179
+
+
+# ==================================================
 # 인증 데이터
-# ==============================
+# ==================================================
 
-def load_data():
-
-    if not os.path.exists(DATA_FILE):
-        return {}
-
-    try:
-
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-
-    except Exception as e:
-
-        print(
-            f"⚠️ 데이터 불러오기 실패: "
-            f"{type(e).__name__}: {e}"
-        )
-
-        return {}
+DATA_FILE = "auth_data.json"
 
 
-def save_data(data):
+if os.path.exists(DATA_FILE):
 
     try:
 
         with open(
             DATA_FILE,
-            "w",
+            "r",
             encoding="utf-8"
         ) as f:
 
-            json.dump(
-                data,
-                f,
-                ensure_ascii=False,
-                indent=4
-            )
+            auth_data = json.load(f)
 
-    except Exception as e:
+    except Exception:
 
-        print(
-            f"⚠️ 데이터 저장 실패: "
-            f"{type(e).__name__}: {e}"
+        auth_data = {}
+
+else:
+
+    auth_data = {}
+
+
+def save_data(data):
+
+    with open(
+        DATA_FILE,
+        "w",
+        encoding="utf-8"
+    ) as f:
+
+        json.dump(
+            data,
+            f,
+            ensure_ascii=False,
+            indent=4
         )
 
 
-auth_data = load_data()
-
-
-# ==============================
+# ==================================================
 # 닉네임 형식
 #
-# 년생 롤닉네임#태그 / 티어 / 주라인
-#
-# 예:
-# 00 뿌 직#휴 지 / P3 / 서폿
-# 99 Faker#KR1 / D1 / 미드
-# 01 아무개#KR2 / U / 탑
-# ==============================
+# 년생 롤 닉네임#태그 / 티어 / 주라인
+# ==================================================
 
 TIER_PATTERN = (
     r"(?:"
@@ -104,36 +102,45 @@ TIER_PATTERN = (
     r")"
 )
 
+
 POSITION_PATTERN = (
     r"(?:탑|정글|미드|원딜|서폿|서포터)"
 )
 
+
 NICKNAME_PATTERN = re.compile(
+
     rf"^(?P<year>\d{{2}})"
+
     rf"\s+"
+
     rf"(?P<name>[^#/\n]+?)"
+
     rf"#(?P<tag>[^/\n]+?)"
+
     rf"\s*/\s*"
+
     rf"(?P<tier>{TIER_PATTERN})"
+
     rf"\s*/\s*"
+
     rf"(?P<position>{POSITION_PATTERN})$"
+
 )
 
-
-# ==============================
-# 닉네임 검사
-# ==============================
 
 def parse_nickname(nickname):
 
     if not nickname:
+
         return None
 
-    nickname = nickname.strip()
-
-    match = NICKNAME_PATTERN.fullmatch(nickname)
+    match = NICKNAME_PATTERN.match(
+        nickname.strip()
+    )
 
     if not match:
+
         return None
 
     return match.groupdict()
@@ -144,16 +151,21 @@ def is_valid_nickname(nickname):
     return parse_nickname(nickname) is not None
 
 
-# ==============================
+# ==================================================
 # 인증 안내 Embed
-# ==============================
+# ==================================================
 
 async def send_guide_message():
 
     try:
 
+        # ------------------------------
         # 채널 가져오기
-        channel = bot.get_channel(GUIDE_CHANNEL_ID)
+        # ------------------------------
+
+        channel = bot.get_channel(
+            GUIDE_CHANNEL_ID
+        )
 
         if channel is None:
 
@@ -161,66 +173,115 @@ async def send_guide_message():
                 GUIDE_CHANNEL_ID
             )
 
-        print("🤍 인증안내 채널 확인 완료")
+        print(
+            "🤍 인증안내 채널 확인 완료"
+        )
+
         print(
             f"📌 채널: {channel.name}"
         )
+
         print(
             f"📌 채널 ID: {channel.id}"
         )
 
-        # 기존 봇 메시지 확인
+
+        # ------------------------------
+        # 기존 봇 인증안내 Embed 삭제
+        # ------------------------------
+
         async for message in channel.history(
             limit=50
         ):
 
             if message.author != bot.user:
+
                 continue
 
-            # 기존 인증안내 Embed 삭제
-            if message.embeds:
 
-                for embed in message.embeds:
+            if not message.embeds:
 
-                    if (
-                        embed.title
-                        == "🤍 롤하자 인증 안내"
-                    ):
+                continue
 
-                        try:
 
-                            await message.delete()
+            for old_embed in message.embeds:
 
-                            print(
-                                "🗑️ 기존 인증안내 Embed 삭제 완료"
-                            )
+                if (
+                    old_embed.title
+                    == "🤍 롤하자 인증 안내"
+                ):
 
-                        except Exception as e:
+                    try:
 
-                            print(
-                                "⚠️ 기존 인증안내 Embed 삭제 실패: "
-                                f"{type(e).__name__}: {e}"
-                            )
+                        await message.delete()
 
-                        break
+                        print(
+                            "🗑️ 기존 인증안내 Embed 삭제 완료"
+                        )
 
+                    except Exception as e:
+
+                        print(
+                            "⚠️ 기존 인증안내 Embed 삭제 실패: "
+                            f"{type(e).__name__}: {e}"
+                        )
+
+                    break
+
+
+        # ------------------------------
         # 새 Embed
+        # ------------------------------
+
         embed = discord.Embed(
+
             title="🤍 롤하자 인증 안내",
+
             description=(
+
                 "① 닉네임 변경\n"
+
                 "`년생 롤 닉네임#태그 / 티어 / 주라인`\n\n"
+
                 "예시\n"
+
                 "`00 억울합니다#제가던졌 / P3 / 서폿`\n"
+
                 "`99 Faker#KR1 / D1 / 미드`\n"
+
                 "`01 아무개#KR2 / U / 탑`\n\n"
+
                 "② 하트 인증\n"
+
                 "💙 하트 인증 채널에 인증샷을 올려주세요.\n\n"
+
                 "닉네임 변경 + 인증샷 업로드 완료 시\n"
+
                 "🏷️ `롤하자` 역할이 자동 지급됩니다."
+
             ),
+
             color=discord.Color.light_grey()
+
         )
+
+
+        # ------------------------------
+        # 실제 Embed 내용 로그
+        # ------------------------------
+
+        print(
+            "📦 실제 전송할 Embed 내용:"
+        )
+
+        print(
+            embed.description
+        )
+
+
+        # ------------------------------
+        # Embed 전송
+        # ------------------------------
 
         await channel.send(
             embed=embed
@@ -230,11 +291,13 @@ async def send_guide_message():
             "✅ 새 인증안내 Embed 전송 완료"
         )
 
+
     except discord.Forbidden:
 
         print(
             "❌ 인증안내 채널에 메시지를 보낼 권한이 없습니다."
         )
+
 
     except Exception as e:
 
@@ -244,15 +307,19 @@ async def send_guide_message():
         )
 
 
-# ==============================
+# ==================================================
 # 역할 지급 확인
-# ==============================
+# ==================================================
 
 async def check_and_give_role(member):
 
-    print("=" * 50)
+    print(
+        "=" * 50
+    )
 
-    print("🔎 역할 확인 시작")
+    print(
+        "🔎 역할 확인 시작"
+    )
 
     print(
         f"👤 사용자: {member}"
@@ -262,11 +329,14 @@ async def check_and_give_role(member):
         f"📝 현재 닉네임: {member.nick}"
     )
 
+
     # ------------------------------
     # 하트 인증 확인
     # ------------------------------
 
-    user_id = str(member.id)
+    user_id = str(
+        member.id
+    )
 
     heart_verified = (
         auth_data
@@ -278,6 +348,7 @@ async def check_and_give_role(member):
         f"💙 하트 인증: {heart_verified}"
     )
 
+
     # ------------------------------
     # 닉네임 확인
     # ------------------------------
@@ -285,6 +356,7 @@ async def check_and_give_role(member):
     nickname_info = parse_nickname(
         member.nick
     )
+
 
     if nickname_info:
 
@@ -318,6 +390,7 @@ async def check_and_give_role(member):
             "❌ 닉네임 형식: 불일치"
         )
 
+
     # ------------------------------
     # 하트 인증 X
     # ------------------------------
@@ -329,6 +402,7 @@ async def check_and_give_role(member):
         )
 
         return
+
 
     # ------------------------------
     # 닉네임 X
@@ -342,6 +416,7 @@ async def check_and_give_role(member):
 
         return
 
+
     # ------------------------------
     # 역할 찾기
     # ------------------------------
@@ -349,6 +424,7 @@ async def check_and_give_role(member):
     role = member.guild.get_role(
         ROLE_ID
     )
+
 
     if role is None:
 
@@ -358,9 +434,11 @@ async def check_and_give_role(member):
 
         return
 
+
     print(
         f"🏷️ 찾은 역할: {role.name}"
     )
+
 
     # ------------------------------
     # 이미 역할이 있으면 종료
@@ -374,6 +452,7 @@ async def check_and_give_role(member):
 
         return
 
+
     # ------------------------------
     # 역할 지급
     # ------------------------------
@@ -381,13 +460,17 @@ async def check_and_give_role(member):
     try:
 
         await member.add_roles(
+
             role,
+
             reason="롤하자 인증 완료"
+
         )
 
         print(
             "🎉 롤하자 역할 지급 완료!"
         )
+
 
     except discord.Forbidden:
 
@@ -397,6 +480,7 @@ async def check_and_give_role(member):
             "권한이 없습니다."
         )
 
+
     except Exception as e:
 
         print(
@@ -405,14 +489,16 @@ async def check_and_give_role(member):
         )
 
 
-# ==============================
+# ==================================================
 # 봇 준비 완료
-# ==============================
+# ==================================================
 
 @bot.event
 async def on_ready():
 
-    print("=" * 50)
+    print(
+        "=" * 50
+    )
 
     print(
         f"로그인 성공: {bot.user}"
@@ -430,33 +516,47 @@ async def on_ready():
         "🤍 인증안내 Embed 적용 완료"
     )
 
-    print("=" * 50)
+    print(
+        "=" * 50
+    )
 
+
+    # ------------------------------
     # 인증안내 Embed 자동 등록
+    # ------------------------------
+
     await send_guide_message()
 
 
-# ==============================
+# ==================================================
 # 메시지 감지
 # 하트 인증
-# ==============================
+# ==================================================
 
 @bot.event
 async def on_message(message):
 
     # 봇 메시지 무시
     if message.author.bot:
+
         return
 
+
     # 하트 인증 채널이 아니면 무시
-    if message.channel.id != HEART_CHANNEL_ID:
+    if (
+        message.channel.id
+        != HEART_CHANNEL_ID
+    ):
+
         return
+
 
     # ------------------------------
     # 이미지 확인
     # ------------------------------
 
     has_image = False
+
 
     for attachment in message.attachments:
 
@@ -467,11 +567,15 @@ async def on_message(message):
             ):
 
                 has_image = True
+
                 break
+
 
     # 이미지가 없으면 종료
     if not has_image:
+
         return
+
 
     # ------------------------------
     # 데이터 생성
@@ -481,9 +585,11 @@ async def on_message(message):
         message.author.id
     )
 
+
     if user_id not in auth_data:
 
         auth_data[user_id] = {}
+
 
     # ------------------------------
     # 하트 인증 완료
@@ -491,13 +597,17 @@ async def on_message(message):
 
     auth_data[user_id]["heart"] = True
 
-    save_data(auth_data)
+    save_data(
+        auth_data
+    )
+
 
     print(
         f"💙 하트 인증 완료: "
         f"{message.author} "
         f"({message.author.id})"
     )
+
 
     # ------------------------------
     # 하트 + 닉네임 확인
@@ -513,9 +623,9 @@ async def on_message(message):
         )
 
 
-# ==============================
+# ==================================================
 # 닉네임 변경 감지
-# ==============================
+# ==================================================
 
 @bot.event
 async def on_member_update(
@@ -525,9 +635,13 @@ async def on_member_update(
 
     # 닉네임이 바뀌지 않았으면 무시
     if before.nick == after.nick:
+
         return
 
-    print("=" * 50)
+
+    print(
+        "=" * 50
+    )
 
     print(
         "🔄 닉네임 변경 감지"
@@ -545,6 +659,7 @@ async def on_member_update(
         f"📝 변경 닉네임: {after.nick}"
     )
 
+
     # ------------------------------
     # 닉네임 형식 확인
     # ------------------------------
@@ -552,6 +667,7 @@ async def on_member_update(
     nickname_info = parse_nickname(
         after.nick
     )
+
 
     # ------------------------------
     # 형식이 잘못된 경우
@@ -562,32 +678,49 @@ async def on_member_update(
         try:
 
             await after.send(
+
                 "❌ **닉네임 형식이 올바르지 않습니다.**\n\n"
+
                 "롤하자 닉네임은 아래 형식으로 변경해주세요.\n\n"
+
                 "`년생 롤 닉네임#태그 / 티어 / 주라인`\n\n"
+
                 "예시:\n"
+
                 "`00 억울합니다#제가던졌 / P3 / 서폿`\n"
+
                 "`99 Faker#KR1 / D1 / 미드`\n"
+
                 "`01 아무개#KR2 / U / 탑`\n\n"
+
                 "티어:\n"
+
                 "`U`, `I1~I4`, `B1~B4`, "
                 "`S1~S4`, `G1~G4`, "
                 "`P1~P4`, `E1~E4`, `D1~D4`\n\n"
+
                 "마스터 이상:\n"
+
                 "`M800`, `GM425`, `C1200`\n\n"
+
                 "주라인:\n"
+
                 "`탑 / 정글 / 미드 / 원딜 / 서폿 / 서포터`"
+
             )
+
 
             print(
                 "📩 잘못된 닉네임 형식 DM 전송"
             )
+
 
         except discord.Forbidden:
 
             print(
                 "⚠️ 사용자에게 DM을 보낼 수 없습니다."
             )
+
 
         except Exception as e:
 
@@ -596,11 +729,13 @@ async def on_member_update(
                 f"{type(e).__name__}: {e}"
             )
 
+
     else:
 
         print(
             "✅ 닉네임 형식: 정상"
         )
+
 
     # ------------------------------
     # 하트 + 닉네임 확인
@@ -611,9 +746,9 @@ async def on_member_update(
     )
 
 
-# ==============================
+# ==================================================
 # 봇 실행
-# ==============================
+# ==================================================
 
 if not TOKEN:
 
@@ -627,4 +762,7 @@ else:
         "🚀 롤하자 봇 시작 중..."
     )
 
-    bot.run(TOKEN)
+    bot.run(
+        TOKEN
+    )
+```
