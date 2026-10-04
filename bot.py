@@ -13,7 +13,7 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 # 채널 / 역할 ID
 # ==============================
 
-# ❤️ 하트 인증 채널
+# 💙 하트 인증 채널
 HEART_CHANNEL_ID = 1551099030409314384
 
 # 🤍 인증안내 채널
@@ -76,24 +76,57 @@ auth_data = load_data()
 # ==============================
 # 닉네임 형식
 #
-# 롤 닉네임#태그 / 티어 / 주라인
+# 최종 형식
+#
+# 00 억울합니다#제가던졌 / P3 / 서폿
+# 99 Faker#KR1 / D1 / 미드
+# 01 아무개#KR2 / U / 탑
+#
 # ==============================
+
+# 티어 규칙
+#
+# U       → 언랭, 숫자 없음
+# I1~I4   → 아이언
+# B1~B4   → 브론즈
+# S1~S4   → 실버
+# G1~G4   → 골드
+# P1~P4   → 플래티넘
+# E1~E4   → 에메랄드
+# D1~D4   → 다이아
+# M + LP  → 마스터
+# GM + LP → 그랜드마스터
+# C + LP  → 챌린저
 
 TIER_PATTERN = (
     r"(?:"
-    r"[IBSGPED][1-4]"
+    r"U"
+    r"|[IBSGPED][1-4]"
     r"|GM[1-9]\d{0,3}"
     r"|M[1-9]\d{0,3}"
     r"|C[1-9]\d{0,3}"
     r")"
 )
 
+# 주라인
 POSITION_PATTERN = (
     r"(?:탑|정글|미드|원딜|서폿|서포터)"
 )
 
+# 최종 닉네임 형식
+#
+# 00 억울합니다#제가던졌 / P3 / 서폿
+#
+# - 년생: 숫자 2자리
+# - 롤 닉네임: 공백 허용
+# - #태그: 공백 허용
+# - 티어
+# - 주라인
+#
 NICKNAME_PATTERN = re.compile(
-    rf"^(?P<name>[^#/\n]+?)"
+    rf"^(?P<year>\d{{2}})"
+    rf"\s+"
+    rf"(?P<name>[^#/\n]+?)"
     rf"#(?P<tag>[^/\n]+?)"
     rf"\s*/\s*"
     rf"(?P<tier>{TIER_PATTERN})"
@@ -115,6 +148,7 @@ def parse_nickname(nickname):
         return None
 
     return {
+        "year": match.group("year").strip(),
         "name": match.group("name").strip(),
         "tag": match.group("tag").strip(),
         "tier": match.group("tier").strip(),
@@ -173,14 +207,15 @@ async def send_guide_message():
             title="🤍 롤하자 인증 안내",
             description=(
                 "**① 닉네임 변경**\n"
-                "`롤 닉네임#태그 / 티어 / 주라인`\n\n"
+                "`년생 롤 닉네임#태그 / 티어 / 주라인`\n\n"
 
                 "**예시**\n"
-                "`Faker#KR1 / D1 / 미드`\n"
-                "`Zeus#KR1 / P2 / 탑`\n\n"
+                "`00 억울합니다#제가던졌 / P3 / 서폿`\n"
+                "`99 Faker#KR1 / D1 / 미드`\n"
+                "`01 아무개#KR2 / U / 탑`\n\n"
 
                 "**② 하트 인증**\n"
-                "❤️ 하트 인증 채널에 인증샷을 올려주세요.\n\n"
+                "💙 하트 인증 채널에 인증샷을 올려주세요.\n\n"
 
                 "**닉네임 변경 + 인증샷 업로드 완료 시**\n"
                 "🏷️ `롤하자` 역할이 자동 지급됩니다."
@@ -222,7 +257,7 @@ async def check_and_give_role(member):
     print("=" * 50)
 
     print(
-        f"🔎 역할 확인 시작"
+        "🔎 역할 확인 시작"
     )
 
     print(
@@ -233,7 +268,10 @@ async def check_and_give_role(member):
         f"📝 현재 닉네임: {member.nick}"
     )
 
+    # ==============================
     # 하트 인증 확인
+    # ==============================
+
     heart_verified = (
         auth_data
         .get(user_id, {})
@@ -241,10 +279,13 @@ async def check_and_give_role(member):
     )
 
     print(
-        f"❤️ 하트 인증: {heart_verified}"
+        f"💙 하트 인증: {heart_verified}"
     )
 
+    # ==============================
     # 닉네임 확인
+    # ==============================
+
     nickname_info = parse_nickname(
         member.nick
     )
@@ -253,6 +294,11 @@ async def check_and_give_role(member):
 
         print(
             "✅ 닉네임 형식: 정상"
+        )
+
+        print(
+            f"🎂 년생: "
+            f"{nickname_info['year']}"
         )
 
         print(
@@ -281,7 +327,10 @@ async def check_and_give_role(member):
             "❌ 닉네임 형식: 불일치"
         )
 
+    # ==============================
     # 하트 인증이 없으면 종료
+    # ==============================
+
     if not heart_verified:
 
         print(
@@ -293,7 +342,10 @@ async def check_and_give_role(member):
 
         return
 
+    # ==============================
     # 닉네임 형식이 틀리면 종료
+    # ==============================
+
     if nickname_info is None:
 
         print(
@@ -305,7 +357,10 @@ async def check_and_give_role(member):
 
         return
 
+    # ==============================
     # 역할 찾기
+    # ==============================
+
     role = member.guild.get_role(
         ROLE_ID
     )
@@ -313,7 +368,7 @@ async def check_and_give_role(member):
     if role is None:
 
         print(
-            f"❌ 역할을 찾을 수 없습니다."
+            "❌ 역할을 찾을 수 없습니다."
         )
 
         print(
@@ -328,7 +383,13 @@ async def check_and_give_role(member):
         f"🏷️ 찾은 역할: {role.name}"
     )
 
+    # ==============================
     # 이미 역할이 있으면 종료
+    #
+    # 중요:
+    # 역할 제거 기능은 없음.
+    # ==============================
+
     if role in member.roles:
 
         print(
@@ -339,7 +400,10 @@ async def check_and_give_role(member):
 
         return
 
+    # ==============================
     # 역할 지급
+    # ==============================
+
     try:
 
         await member.add_roles(
@@ -391,7 +455,11 @@ async def on_ready():
     )
 
     print(
-        "📝 새 닉네임 형식 적용 완료"
+        "📝 최종 닉네임 형식 적용 완료"
+    )
+
+    print(
+        "💙 하트 인증 적용 완료"
     )
 
     print(
@@ -405,7 +473,7 @@ async def on_ready():
 
 
 # ==============================
-# 하트 인증
+# 💙 하트 인증
 # ==============================
 
 @bot.event
@@ -419,7 +487,10 @@ async def on_message(message):
     if message.channel.id != HEART_CHANNEL_ID:
         return
 
+    # ==============================
     # 이미지 확인
+    # ==============================
+
     has_image = False
 
     for attachment in message.attachments:
@@ -441,23 +512,32 @@ async def on_message(message):
         message.author.id
     )
 
+    # ==============================
     # 데이터 생성
+    # ==============================
+
     if user_id not in auth_data:
 
         auth_data[user_id] = {}
 
+    # ==============================
     # 하트 인증 완료
+    # ==============================
+
     auth_data[user_id]["heart"] = True
 
     save_data(auth_data)
 
     print(
-        f"❤️ 하트 인증 완료: "
+        f"💙 하트 인증 완료: "
         f"{message.author} "
         f"({message.author.id})"
     )
 
+    # ==============================
     # 하트 + 닉네임 확인
+    # ==============================
+
     if isinstance(
         message.author,
         discord.Member
@@ -498,12 +578,18 @@ async def on_member_update(
 
     print("=" * 50)
 
+    # ==============================
     # 닉네임 형식 확인
+    # ==============================
+
     nickname_info = parse_nickname(
         after.nick
     )
 
+    # ==============================
     # 잘못된 형식이면 DM 안내
+    # ==============================
+
     if nickname_info is None:
 
         try:
@@ -511,15 +597,25 @@ async def on_member_update(
             await after.send(
                 "❌ **닉네임 형식이 올바르지 않습니다.**\n\n"
                 "롤하자 닉네임은 아래 형식으로 변경해주세요.\n\n"
-                "`롤 닉네임#태그 / 티어 / 주라인`\n\n"
+                "`년생 롤 닉네임#태그 / 티어 / 주라인`\n\n"
+
                 "**예시**\n"
-                "`Faker#KR1 / D1 / 미드`\n"
-                "`Zeus#KR1 / P2 / 탑`\n\n"
-                "티어는 `I1~I4`, `B1~B4`, "
-                "`S1~S4`, `G1~G4`, `P1~P4`, "
-                "`E1~E4`, `D1~D4` 형식입니다.\n"
-                "마스터 이상은 `M800`, `GM425`, "
-                "`C1200`처럼 LP를 입력해주세요."
+                "`00 억울합니다#제가던졌 / P3 / 서폿`\n"
+                "`99 Faker#KR1 / D1 / 미드`\n"
+                "`01 아무개#KR2 / U / 탑`\n\n"
+
+                "**티어 형식**\n"
+                "`U` = 언랭\n"
+                "`I1~I4` = 아이언\n"
+                "`B1~B4` = 브론즈\n"
+                "`S1~S4` = 실버\n"
+                "`G1~G4` = 골드\n"
+                "`P1~P4` = 플래티넘\n"
+                "`E1~E4` = 에메랄드\n"
+                "`D1~D4` = 다이아\n"
+                "`M + LP` = 마스터\n"
+                "`GM + LP` = 그랜드마스터\n"
+                "`C + LP` = 챌린저"
             )
 
             print(
@@ -539,7 +635,10 @@ async def on_member_update(
                 f"{type(e).__name__}: {e}"
             )
 
+    # ==============================
     # 하트 + 닉네임 확인
+    # ==============================
+
     await check_and_give_role(
         after
     )
