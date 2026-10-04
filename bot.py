@@ -319,3 +319,4 @@ async def on_member_update(before, after):
 print("🚀 롤하자 봇 시작 중...")
 
 bot.run(TOKEN)
+# Railway deployment sync
