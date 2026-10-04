@@ -141,23 +141,30 @@ def is_valid_nickname(nickname):
 
 async def send_guide_message():
 
-    channel = bot.get_channel(
-        GUIDE_CHANNEL_ID
-    )
-
-    if channel is None:
-
-        print(
-            f"❌ 인증안내 채널을 찾을 수 없습니다."
-            f" 채널 ID: {GUIDE_CHANNEL_ID}"
-        )
-
-        return
-
     try:
 
         # ==============================
-        # 새 인증안내 Embed 내용
+        # 실제 채널을 직접 가져오기
+        # ==============================
+
+        channel = await bot.fetch_channel(
+            GUIDE_CHANNEL_ID
+        )
+
+        print(
+            "🤍 인증안내 채널 확인 완료"
+        )
+
+        print(
+            f"채널 이름: {channel.name}"
+        )
+
+        print(
+            f"채널 ID: {channel.id}"
+        )
+
+        # ==============================
+        # 새 인증안내 Embed
         # ==============================
 
         embed = discord.Embed(
@@ -181,10 +188,10 @@ async def send_guide_message():
         )
 
         # ==============================
-        # 기존 안내 Embed 찾기
+        # 기존 봇 Embed 삭제
         # ==============================
 
-        old_message = None
+        deleted_count = 0
 
         async for message in channel.history(
             limit=30
@@ -193,46 +200,78 @@ async def send_guide_message():
             if (
                 message.author == bot.user
                 and message.embeds
-                and message.embeds[0].title
-                == "🤍 롤하자 인증 안내"
             ):
 
-                old_message = message
-                break
+                if (
+                    message.embeds[0].title
+                    == "🤍 롤하자 인증 안내"
+                ):
+
+                    try:
+
+                        await message.delete()
+
+                        deleted_count += 1
+
+                        print(
+                            "🗑️ 기존 인증안내 Embed 삭제 완료"
+                        )
+
+                    except discord.NotFound:
+
+                        pass
+
+                    except discord.Forbidden:
+
+                        print(
+                            "❌ 기존 인증안내 Embed 삭제 권한 없음"
+                        )
+
+        print(
+            f"🗑️ 기존 인증안내 Embed "
+            f"{deleted_count}개 삭제"
+        )
 
         # ==============================
-        # 기존 Embed가 있으면 수정
+        # 새 Embed 강제 전송
         # ==============================
 
-        if old_message is not None:
-
-            await old_message.edit(
-                embed=embed
-            )
-
-            print(
-                "✅ 기존 인증안내 Embed 업데이트 완료"
-            )
-
-            return
-
-        # ==============================
-        # 기존 Embed가 없으면 새로 전송
-        # ==============================
-
-        await channel.send(
+        new_message = await channel.send(
             embed=embed
+        )
+
+        print(
+            "=========================================="
         )
 
         print(
             "✅ 새 인증안내 Embed 전송 완료"
         )
 
+        print(
+            f"📨 새 메시지 ID: {new_message.id}"
+        )
+
+        print(
+            f"📍 전송 채널: #{channel.name}"
+        )
+
+        print(
+            "=========================================="
+        )
+
+    except discord.NotFound:
+
+        print(
+            f"❌ 인증안내 채널을 찾을 수 없습니다."
+            f" 채널 ID: {GUIDE_CHANNEL_ID}"
+        )
+
     except discord.Forbidden:
 
         print(
-            "❌ 인증안내 채널에 "
-            "메시지를 보낼 권한이 없습니다."
+            "❌ 인증안내 채널 접근 또는 "
+            "메시지 전송 권한이 없습니다."
         )
 
     except Exception as e:
