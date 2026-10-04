@@ -81,22 +81,7 @@ auth_data = load_data()
 # 00 억울합니다#제가던졌 / P3 / 서폿
 # 99 Faker#KR1 / D1 / 미드
 # 01 아무개#KR2 / U / 탑
-#
 # ==============================
-
-# 티어 규칙
-#
-# U       → 언랭, 숫자 없음
-# I1~I4   → 아이언
-# B1~B4   → 브론즈
-# S1~S4   → 실버
-# G1~G4   → 골드
-# P1~P4   → 플래티넘
-# E1~E4   → 에메랄드
-# D1~D4   → 다이아
-# M + LP  → 마스터
-# GM + LP → 그랜드마스터
-# C + LP  → 챌린저
 
 TIER_PATTERN = (
     r"(?:"
@@ -108,21 +93,10 @@ TIER_PATTERN = (
     r")"
 )
 
-# 주라인
 POSITION_PATTERN = (
     r"(?:탑|정글|미드|원딜|서폿|서포터)"
 )
 
-# 최종 닉네임 형식
-#
-# 00 억울합니다#제가던졌 / P3 / 서폿
-#
-# - 년생: 숫자 2자리
-# - 롤 닉네임: 공백 허용
-# - #태그: 공백 허용
-# - 티어
-# - 주라인
-#
 NICKNAME_PATTERN = re.compile(
     rf"^(?P<year>\d{{2}})"
     rf"\s+"
@@ -182,27 +156,10 @@ async def send_guide_message():
 
     try:
 
-        # 최근 메시지 확인
-        async for message in channel.history(
-            limit=30
-        ):
+        # ==============================
+        # 새 인증안내 Embed 내용
+        # ==============================
 
-            # 봇이 이미 안내 Embed를 올렸으면
-            # 다시 올리지 않음
-            if (
-                message.author == bot.user
-                and message.embeds
-                and message.embeds[0].title
-                == "🤍 롤하자 인증 안내"
-            ):
-
-                print(
-                    "ℹ️ 인증안내 Embed가 이미 있습니다."
-                )
-
-                return
-
-        # Embed 생성
         embed = discord.Embed(
             title="🤍 롤하자 인증 안내",
             description=(
@@ -223,12 +180,52 @@ async def send_guide_message():
             color=discord.Color.light_grey()
         )
 
+        # ==============================
+        # 기존 안내 Embed 찾기
+        # ==============================
+
+        old_message = None
+
+        async for message in channel.history(
+            limit=30
+        ):
+
+            if (
+                message.author == bot.user
+                and message.embeds
+                and message.embeds[0].title
+                == "🤍 롤하자 인증 안내"
+            ):
+
+                old_message = message
+                break
+
+        # ==============================
+        # 기존 Embed가 있으면 수정
+        # ==============================
+
+        if old_message is not None:
+
+            await old_message.edit(
+                embed=embed
+            )
+
+            print(
+                "✅ 기존 인증안내 Embed 업데이트 완료"
+            )
+
+            return
+
+        # ==============================
+        # 기존 Embed가 없으면 새로 전송
+        # ==============================
+
         await channel.send(
             embed=embed
         )
 
         print(
-            "✅ 인증안내 Embed 전송 완료"
+            "✅ 새 인증안내 Embed 전송 완료"
         )
 
     except discord.Forbidden:
@@ -241,7 +238,7 @@ async def send_guide_message():
     except Exception as e:
 
         print(
-            f"❌ 인증안내 Embed 전송 오류: "
+            f"❌ 인증안내 Embed 처리 오류: "
             f"{type(e).__name__}: {e}"
         )
 
@@ -468,7 +465,6 @@ async def on_ready():
 
     print("=" * 50)
 
-    # 인증안내 Embed 확인 / 등록
     await send_guide_message()
 
 
@@ -479,11 +475,9 @@ async def on_ready():
 @bot.event
 async def on_message(message):
 
-    # 봇 메시지 무시
     if message.author.bot:
         return
 
-    # 하트 인증 채널이 아니면 무시
     if message.channel.id != HEART_CHANNEL_ID:
         return
 
@@ -504,7 +498,6 @@ async def on_message(message):
                 has_image = True
                 break
 
-    # 이미지가 없으면 종료
     if not has_image:
         return
 
@@ -558,7 +551,6 @@ async def on_member_update(
     after
 ):
 
-    # 닉네임이 바뀐 게 아니면 무시
     if before.nick == after.nick:
         return
 
